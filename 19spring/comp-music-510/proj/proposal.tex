@@ -1,0 +1,71 @@
+\documentclass{article}
+\usepackage{authblk}
+\usepackage{hyperref}
+\usepackage{libertine}
+\begin{document}
+
+\title{Computers, Sound, and Music: Project Proposal}
+\author[]{Yuxiang Jiang}
+\affil[]{\textit {yux@pdx.edu}}
+\maketitle
+
+\section{Proposal Overview}
+
+We propose to build a music synthesis engine. More specifically, the input of
+our engine will be sheet music or other kind of digital sheet music format,
+and the output will be audio synthesized by sample based
+synthesis. In another word, we are kind of building a MIDI (or other format)
+playback engine.
+
+We would use free instrument samples from the internet. We found
+\href{http://theremin.music.uiowa.edu/MIS.html}
+  {The University of Iowa Musical Instrument Samples}%
+, which
+contains samples of all 88 keys of a piano, and various string
+instrument samples.
+
+For the input format, we have two choices:
+\begin{itemize}
+  \item We can use an existing digital format (MIDI or MusicXML)
+so that we can reuse existing libraries to read them.
+\item We can also design our own format and then convert existing
+sheet music to it. This requires a lot more work but requires us to
+learn more music notations.
+\end{itemize}
+
+\section{Challenges}
+
+We know almost nothing about music theory and sample based synthesis. On
+the other hand, we think that most of the existing digital sheet music formats
+assume that their users should have an understanding of music theory.
+So before we are able to implement our engine, we will have to learn these
+prerequisites.
+
+The other challenge lies in testing. How can we make sure that our engine
+correctly reproduce the sound that the sheet music specifies? We know that
+different musicians can have their own interpretation of music sheets so
+directly comparing our result with music recording from human musicians
+might not be the best way for testing. We should also find some reference
+implementations and compare our results with theirs.
+
+Yet another challenge is to support as many instruments as
+possible. We expect that the synthesis parameters for different instruments
+differ, so each instrument will take some time to implement. We will at
+least support piano. And if time permits, we would also try to add
+some string instruments.
+
+\section{Milestones}
+
+We would expect the project to be split into 4 steps:
+\begin{itemize}
+  \item Choose a digital sheet music format
+  \item Implement a sample based synthesis engine
+  \item Wire up the engine with the format we chose
+  \item Compare our results with reference implementations
+\end{itemize}
+
+\section{Group}
+
+I'd like to do this on my own. That is, my `group' consists of myself only.
+
+\end{document}
