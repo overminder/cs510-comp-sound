@@ -1,0 +1,10 @@
+[package]
+name = "music-syn"
+version = "0.1.0"
+authors = ["Yuxiang Jiang <yux@pdx.edu>"]
+edition = "2018"
+
+[dependencies]
+portaudio = "*"
+hound = "*"
+itertools = "*"
