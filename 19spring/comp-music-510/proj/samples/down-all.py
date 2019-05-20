@@ -7,7 +7,7 @@ BASE = 'http://theremin.music.uiowa.edu/'
 with open('mispiano.html') as f:
     root = HTML(html=f.read())
 
-mfs = [h for h in root.links if 'Piano.mf' in h]
+mfs = [h for h in root.links if 'Piano.ff' in h]
 nmfs = len(mfs)
 print(f'total: {nmfs} files')
 

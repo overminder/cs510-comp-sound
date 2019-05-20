@@ -8,3 +8,4 @@ edition = "2018"
 portaudio = "*"
 hound = "*"
 itertools = "*"
+rimd = { git = "https://github.com/RustAudio/rimd.git" }

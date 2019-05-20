@@ -16,32 +16,16 @@ fn merge_stereo(v: &[i16]) -> Vec<f32> {
 }
 
 fn main() -> R<()> {
-    let w2 = load_wav("samples/Piano.mf.C4.wav")?;
-    let w = merge_stereo(&w2);
+    let f = read_midi("midi/mz_545_1_format0.mid")?;
+    println!("fmt = {}, #tr = {}, div = {}",
+             f.format, f.tracks.len(), f.division);
 
-    // Kind of need to get this offset...
-    let offset = 15000;
-    let N = 5000;
-    let env = Envelope::default();
-    let piece = w[offset..offset+N].to_owned();
-    let loped: Vec<f32> = env
-        .mult(piece.to_owned().into_iter(), N as f64 / SAMPLE_RATE)
-        .collect();
-    let out: Vec<f32> = 
-        loped.iter()
-            .chain(loped.iter())
-            .chain(loped.iter())
-            .cloned()
-            .collect();
-
-    let mut s = Settings::default();
-    s.channels = 1;
-
-    play(&s, out.into_iter())?;
-
-    // stereo_channels_iter(&w).map(
-    //     |(l, r)|
-    //     l / 
+    for t in &f.tracks {
+        println!("{}", t);
+        for e in &t.events[..20] {
+            println!("{}", e);
+        }
+    }
 
     Ok(())
 }
