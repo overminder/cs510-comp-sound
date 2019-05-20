@@ -1,9 +1,17 @@
+use std::f32::consts::PI;
 use itertools::Itertools;
 use itertools::EitherOrBoth::{Both, Left, Right};
 use crate::types::*;
 
 pub fn mult(x: impl Sound, y: impl Sound) -> impl Sound {
     x.zip(y).map(|(x, y)| x * y)
+}
+
+pub fn sinewave(freq: f64, ticks: usize, sample_rate: f64) -> impl Sound {
+    let step = (freq / sample_rate) as f32 * 2.0 * PI;
+    (0..ticks).map(move |t| {
+        (t as f32 * step).sin()
+    })
 }
 
 pub struct Envelope {
@@ -29,6 +37,16 @@ impl Envelope {
             release: 0.15,
             sample_rate: SAMPLE_RATE,
         }
+    }
+
+    pub fn just_release() -> Self {
+        let mut s = Self::default();
+        s.attack = 0.0;
+        s.decay = 0.0;
+        s.sustain = 0.0;
+        s.sustain_plier = 1.0;
+        s.release = 1.0;
+        s
     }
 
     pub fn mult(&self, s: impl Sound, duration: f64) -> impl Sound {

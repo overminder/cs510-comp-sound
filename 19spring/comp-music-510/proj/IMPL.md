@@ -23,10 +23,10 @@ shows some ways for looping
 ### Deciding the instrument/pitch
 
 - Meta.KeySig: sharp/flat, major/minor
-- Meta.ProgChange: [instrument-preset] on [channel]
+- Midi.ProgChange: [instrument-preset] on [channel]
   + See https://www.earmaster.com/wiki/music-technology/what-is-midi.html
     for list of presets. Minus 1 for zero-based indexing.
-- Meta.CtrlChange: [ctrl] [option] on [channel]
+- Midi.CtrlChange: [ctrl] [option] on [channel]
   + See http://www.indiana.edu/~emusic/etext/MIDI/chapter3_MIDI6.shtml
   + ctrl=64: damper pedal (option<64: off, >=64: on)
 

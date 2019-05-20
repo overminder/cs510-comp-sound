@@ -6,6 +6,6 @@ Build a MIDI synthesizer from scratch!
 
 Run `cargo run --release`. This requires portaudio to be installed.
 
-# Development
+# Implementation Notes
 
-[See here](IMPLEMENTATION.md).
+[See here](IMPL.md).

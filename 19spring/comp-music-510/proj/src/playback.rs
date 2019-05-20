@@ -17,6 +17,10 @@ impl Settings {
     }
 }
 
+pub fn play_def(mut sound: impl Sound) -> Result<(), pa::Error> {
+    play(&Settings::default(), sound)
+}
+
 pub fn play(settings: &Settings,
             mut sound: impl Sound) -> Result<(), pa::Error> {
     let pa = pa::PortAudio::new()?;
