@@ -23,6 +23,7 @@ pub struct Envelope {
     pub sustain_plier: f64,
     pub release: f64,
     pub sample_rate: f64,
+    pub amp: f64,
 }
 
 impl Envelope {
@@ -35,6 +36,7 @@ impl Envelope {
             sustain: 0.7,
             sustain_plier: 0.7,
             release: 0.15,
+            amp: 1.0,
             sample_rate: SAMPLE_RATE,
         }
     }
@@ -49,6 +51,17 @@ impl Envelope {
         s
     }
 
+    pub fn fast_release() -> Self {
+        let mut s = Self::default();
+        s.attack = 0.0;
+        s.decay = 0.0;
+        s.decay_plier = 1.0;
+        s.sustain = 0.9;
+        s.sustain_plier = 1.0;
+        s.release = 0.1;
+        s
+    }
+
     pub fn mult(&self, s: impl Sound, duration: f64) -> impl Sound {
         mult(self.make(duration), s)
     }
@@ -58,14 +71,14 @@ impl Envelope {
         let decay = duration * self.decay;
         let sustain = duration * self.sustain;
         let release = duration * self.release;
-        interpolate_to(0., self.attack_plier, attack, self.sample_rate)
-            .chain(interpolate_to(self.attack_plier,
-                                  self.decay_plier, decay,
+        interpolate_to(0., self.attack_plier * self.amp, attack, self.sample_rate)
+            .chain(interpolate_to(self.attack_plier * self.amp,
+                                  self.decay_plier * self.amp, decay,
                                   self.sample_rate))
-            .chain(interpolate_to(self.decay_plier,
-                                  self.sustain_plier, sustain,
+            .chain(interpolate_to(self.decay_plier * self.amp,
+                                  self.sustain_plier * self.amp, sustain,
                                   self.sample_rate))
-            .chain(interpolate_to(self.sustain_plier,
+            .chain(interpolate_to(self.sustain_plier * self.amp,
                                   0., release,
                                   self.sample_rate))
     }

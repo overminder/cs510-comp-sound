@@ -6,6 +6,7 @@ use music_syn::{
     soundprim::*,
     types::*,
     midisyn::*,
+    instr::*,
 };
 
 fn i16_to_f32_norm(x: i16) -> f32 {
@@ -31,8 +32,11 @@ fn debug_track(f: &rimd::SMF) {
 
 fn main() -> R<()> {
     let f = read_midi("midi/mz_545_1_format0.mid")?;
+    // let f = read_midi("midi/mz_331_3_format0.mid")?;
 
-    let mut msyn = MidiSyn::new();
+    let p = Piano::load("samples/normed")?;
+
+    let mut msyn = MidiSyn::new(p);
     // XXX: sanity check >0
     msyn.track_state.div = f.division as usize;
     let events = &f.tracks[0].events;

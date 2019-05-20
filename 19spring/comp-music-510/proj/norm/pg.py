@@ -104,8 +104,8 @@ def make_play_chord(notes):
 def load_and_norm_notes():
     raw = [
         (name, read_note(f'../samples/Piano.mf.{name}.wav'))
-        # for name in make_names('CDEFGAB', '1234567')
-        for name in make_names('C', '4')
+        for name in make_names('CDEFGAB', '1234567', b=True)
+        # for name in make_names('CDEF', '4')
     ]
     # Remove none
     raw = [(name, data) for (name, data) in raw if data is not None]
@@ -242,7 +242,10 @@ class Goertzel:
 
 def save_notes(ns):
     for name, data in ns:
-        wavfile.write(f'../samples/normed/{name}.wav', data=data[:100000],
+        data = data[:100000]
+        mx = np.max(np.abs(data))
+        data = (data * (10000 / mx)).astype('int16')
+        wavfile.write(f'../samples/normed/{name}.wav', data=data,
                 rate=44100)
 
 def main():
@@ -250,10 +253,10 @@ def main():
     # make_play_chord(normed)
     # plot_notes(raw, normed)
     # make_loop(normed)
-    play_some(normed)
+    # play_some(normed)
     # make_loop_by_rev(normed)
     # see_fft(normed)
     # see_freq_over_time(normed)
-    # save_notes(normed)
+    save_notes(normed)
 
 main()

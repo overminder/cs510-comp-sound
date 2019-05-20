@@ -1,5 +1,6 @@
 use crate::soundprim::*;
 use crate::types::*;
+use crate::instr::*;
 
 use std::mem;
 use std::collections::HashMap;
@@ -12,15 +13,30 @@ use rimd::{
     MetaCommand,
 };
 
+type NoteMap = HashMap<u8, Box<Sound>>;
+type NoteVec = Vec<Box<Sound>>;
+
 pub struct MidiSyn {
     pub sample_rate: f64,
     pub track_state: TrackState,
-    sounds: HashMap<u8, Box<Sound>>,
+
+    // Stores the currently pressed notes
+    sounds: NoteMap,
+
+    // Stores the released-while-dampered notes. When
+    // the pedal is released, these sounds are moved to released_sounds.
+    dampered_sounds: NoteVec,
+
+    // Stores the released notes.
+    released_sounds: NoteVec,
 
     // Stores the fraction part of the sample index.
     sample_ix: f64,
 
     output: Vec<f32>,
+
+    // Piano syn
+    piano: Piano,
 }
 
 #[derive(Copy, Clone)]
@@ -29,14 +45,44 @@ enum Instrument {
     NoImpl,
 }
 
+fn elapse_vec(ns: &mut NoteVec) -> f32 {
+    // Advance currently ongoing sounds by a sample.
+    let mut t = NoteVec::new();
+    mem::swap(ns, &mut t);
+    let mut vs: f32 = 0.0;
+    for mut s in t {
+        if let Some(v) = s.next() {
+            ns.push(s);
+            vs += v;
+        }
+    }
+    vs
+}
+
+fn elapse_map(ns: &mut NoteMap) -> f32 {
+    let mut t = NoteMap::new();
+    mem::swap(ns, &mut t);
+    let mut vs: f32 = 0.0;
+    for (key, mut s) in t {
+        if let Some(v) = s.next() {
+            ns.insert(key, s);
+            vs += v;
+        }
+    }
+    vs
+}
+
 impl MidiSyn {
-    pub fn new() -> Self {
+    pub fn new(p: Piano) -> Self {
         Self {
             sample_rate: 44100.0,
             track_state: TrackState::new(),
-            sounds: HashMap::new(),
+            sounds: NoteMap::new(),
+            dampered_sounds: NoteVec::new(),
+            released_sounds: NoteVec::new(),
             sample_ix: 0.0,
             output: vec![],
+            piano: p,
         }
     }
 
@@ -75,15 +121,10 @@ impl MidiSyn {
         // For each sample,
         for _ in 0..nsamples {
             // Advance currently ongoing sounds by a sample.
-            let mut t = HashMap::new();
-            mem::swap(&mut self.sounds, &mut t);
-            let mut vs: f32 = 0.0;
-            for (key, mut s) in t {
-                if let Some(v) = s.next() {
-                    self.sounds.insert(key, s);
-                    vs += v;
-                }
-            }
+            let mut vs = 0.0;
+            vs += elapse_map(&mut self.sounds);
+            vs += elapse_vec(&mut self.dampered_sounds);
+            vs += elapse_vec(&mut self.released_sounds);
             self.output.push(vs);
         }
     }
@@ -126,16 +167,26 @@ impl MidiSyn {
         }
 
         let key_wrt_c4 = (key as i32) - 60;
-        let duration = 2.0;
-        let mut env = Envelope::default();
-        let ss = sinewave(
-            freq_wrt_c4(key_wrt_c4),
-            (self.sample_rate * duration) as usize,
-            self.sample_rate);
-        let ss = env.mult(ss, duration);
-        if let Some(orig_ss) = self.sounds.remove(&key) {
-            // If that key is already pressed, merge them.
-            self.sounds.insert(key, Box::new(superpos(ss, orig_ss)));
+        let duration = 1.0;
+        let amp = (velo as f64) / 128.0;
+
+        let ss: Box<Sound> = match self.track_state.instrument {
+            Instrument::Piano => {
+                Box::new(self.piano.syn(key_wrt_c4, amp))
+            }
+            _ => {
+                let synthesizer = Sine {
+                    key: key_wrt_c4,
+                    duration,
+                    amp,
+                    sample_rate: self.sample_rate,
+                };
+                Box::new(synthesizer.syn())
+            }
+        };
+
+        if self.sounds.contains_key(&key) {
+            panic!("Pressing the same key again: {}", key);
         } else {
             self.sounds.insert(key, Box::new(ss));
         }
@@ -143,8 +194,13 @@ impl MidiSyn {
 
     fn do_note_off(&mut self, key: u8) {
         if let Some(ss) = self.sounds.remove(&key) {
-            let env = Envelope::just_release();
-            self.sounds.insert(key, Box::new(env.mult(ss, 0.1)));
+            if self.track_state.damper_pedal {
+                // Move to the dampered sounds.
+                self.dampered_sounds.push(ss);
+            } else {
+                let env = Envelope::just_release();
+                self.released_sounds.push(Box::new(env.mult(ss, 0.1)));
+            }
         }
     }
 
@@ -160,9 +216,18 @@ impl MidiSyn {
     fn do_ctrl_change(&mut self, ctrl: u8, option: u8) {
         if ctrl == 64 {
             let on = option >= 64;
+            if self.track_state.damper_pedal != on {
+                // Releaseing damper pedal: apply to existing sounds.
+                if !on {
+                    let mut ss = vec![];
+                    mem::swap(&mut self.dampered_sounds, &mut ss);
+                    let env = Envelope::just_release();
+                    for s in ss {
+                        self.released_sounds.push(Box::new(env.mult(s, 0.1)));
+                    }
+                }
+            }
             self.track_state.damper_pedal = on;
-            // TODO: Also control the existing sounds... How should
-            // the data flow?
         }
     }
 }
