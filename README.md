@@ -1,5 +1,7 @@
 # Synopsis
 
+Final project for CS 510 Sound (Spring 2019):
+
 Build a MIDI synthesizer from scratch!
 
 # Running
