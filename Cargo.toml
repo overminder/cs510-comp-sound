@@ -13,3 +13,5 @@ hound = "*"
 itertools = "*"
 rimd = { git = "https://github.com/RustAudio/rimd.git" }
 
+[profile.release]
+debug = true

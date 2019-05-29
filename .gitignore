@@ -1,2 +1,5 @@
 *.wav
 *.aac
+/target
+.*.swp
+*.svg

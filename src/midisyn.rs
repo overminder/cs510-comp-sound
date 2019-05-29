@@ -45,31 +45,49 @@ enum Instrument {
     NoImpl,
 }
 
-fn elapse_vec(ns: &mut NoteVec) -> f32 {
-    // Advance currently ongoing sounds by a sample.
+fn elapse_vec(ns: &mut NoteVec, out: &mut [f32]) {
+    let len = out.len();
     let mut t = NoteVec::new();
     mem::swap(ns, &mut t);
-    let mut vs: f32 = 0.0;
+    
+    // For each sample,
     for mut s in t {
-        if let Some(v) = s.next() {
+        // Take len samples
+        let mut empty = false;
+        for i in 0..len {
+            if let Some(v) = s.next() {
+                out[i] += v;
+            } else {
+                empty = true;
+                break;
+            }
+        }
+        if !empty {
             ns.push(s);
-            vs += v;
         }
     }
-    vs
 }
 
-fn elapse_map(ns: &mut NoteMap) -> f32 {
+fn elapse_map(ns: &mut NoteMap, out: &mut [f32]) {
+    let len = out.len();
     let mut t = NoteMap::new();
     mem::swap(ns, &mut t);
-    let mut vs: f32 = 0.0;
+
     for (key, mut s) in t {
-        if let Some(v) = s.next() {
+        // Take len samples
+        let mut empty = false;
+        for i in 0..len {
+            if let Some(v) = s.next() {
+                out[i] += v;
+            } else {
+                empty = true;
+                break;
+            }
+        }
+        if !empty {
             ns.insert(key, s);
-            vs += v;
         }
     }
-    vs
 }
 
 impl MidiSyn {
@@ -114,19 +132,17 @@ impl MidiSyn {
         // Precalc these?
         let nsamples = self.sample_ix + self.samples_in_tick(vt);
         self.sample_ix = nsamples % 1.0;
-        let nsamples = nsamples as i64;
+        let nsamples = nsamples as usize;
 
         // TODO: Could swap these two loops.
 
         // For each sample,
-        for _ in 0..nsamples {
-            // Advance currently ongoing sounds by a sample.
-            let mut vs = 0.0;
-            vs += elapse_map(&mut self.sounds);
-            vs += elapse_vec(&mut self.dampered_sounds);
-            vs += elapse_vec(&mut self.released_sounds);
-            self.output.push(vs);
-        }
+        let mut output = vec![0.0; nsamples];
+        // Advance currently ongoing sounds by nsamples.
+        elapse_map(&mut self.sounds, &mut output);
+        elapse_vec(&mut self.dampered_sounds, &mut output);
+        elapse_vec(&mut self.released_sounds, &mut output);
+        self.output.extend(output);
     }
 
     fn do_midi(&mut self, msg: &MidiMessage) {
