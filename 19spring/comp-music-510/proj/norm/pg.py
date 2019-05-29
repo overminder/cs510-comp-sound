@@ -18,14 +18,11 @@ def read_note(path):
     # Avg the channels
     return data[:,0] / 65536 + data[:,1] / 65536
 
-def amplitude(data):
-    # Keep only first couple seconds
-    data = data[:50000]
-
+def amplitude(data, window=441):
     # Keep amp only
     data = np.abs(data)
 
-    return running_mean(data, 441)
+    return running_mean(data, window)
 
 def norm_max(raw_notes):
     # 1. Find max values.
@@ -101,15 +98,19 @@ def make_play_chord(notes):
     play_some(to_play)
 
 # Something wrong with pp.A3
-def load_and_norm_notes():
+def load_and_norm_notes(nsamples=100000):
     raw = [
         (name, read_note(f'../samples/Piano.mf.{name}.wav'))
-        for name in make_names('CDEFGAB', '1234567', b=True)
-        # for name in make_names('CDEF', '4')
+        # for name in make_names('CDEFGAB', '1234567', b=True)
+        for name in make_names('CDEF', '4')
     ]
     # Remove none
+    if nsamples is not None:
+        raw = [(name, data[:nsamples + 50000]) for (name, data) in raw]
     raw = [(name, data) for (name, data) in raw if data is not None]
     normed = norm_attack(norm_max(raw))
+    if nsamples is not None:
+        normed = [(name, data[:nsamples]) for (name, data) in normed]
     return (raw, normed)
 
 def plot_notes(raw, normed):
@@ -125,61 +126,36 @@ def plot_notes(raw, normed):
 
     plt.show()
 
-def make_loop(normed):
-    normed = dict(normed)
-    c4 = normed['C4']
+def show_fit_polynomial_curve(normed):
+    y = amplitude(dict(normed)['C4'])
+    X = np.arange(len(y))
+    plt.plot(y, label=f'C4')
+    for degree in range(10, 15):
+        z = np.poly1d(np.polyfit(X, y, degree))
+        y_pred = z(X)
+        plt.plot(y_pred, label=f'C4-fit:{degree}')
+    plt.legend()
+    plt.show()
 
-    tick = int(2 * 44100 / 262.8)
-    fade = 100
-    start_len = 3000
-    loop_len = tick
-    res_len = 50000
-    ovl = 100
+def fit_polynomial_curve(normed, center='C4', degree=25):
+    zs = {}
+    for name, data in normed:
+        y = amplitude(data, 1)
+        x = np.arange(len(y))
+        z = np.poly1d(np.polyfit(x, y, degree))
+        zs[name] = z(x)
+        print(len(y), len(x))
 
-    start = np.copy(c4[:start_len])
-    s_envelop = np.ones(start.shape)
-    s_envelop[-fade:] = np.arange(start=0., stop=1., step=1/fade)
-    start *= s_envelop
+    target_ratio = zs[center]
+    out = []
+    for name, data in normed:
+        ratio = target_ratio / zs[name]
+        print(len(ratio), len(data))
+        out.append((name, data * ratio))
+    return out
 
-    to_loop = np.copy(c4[start_len:start_len + loop_len])
-    l_envelop = np.ones(to_loop.shape)
-    l_envelop[:fade] = np.arange(start=0., stop=1., step=1/fade)
-    l_envelop[-fade:] = np.arange(start=1., stop=0., step=-1/fade)
-    to_loop *= l_envelop
 
-    res = np.zeros(res_len, dtype='float64')
-    res[:start_len] = start
-    for i in range(start_len, res_len - loop_len, loop_len - ovl):
-        res[i:i+loop_len] += to_loop
-
-    play_some([('C4-l', res)])
-
-def make_loop_by_rev(normed):
-    normed = dict(normed)
-    c4 = normed['C4']
-
-    tick = int(2 * 44100 / 262.8)
-    start_len = 3000
-    loop_len = tick
-    res_len = 50000
-
-    start = np.copy(c4[:start_len])
-
-    to_loop = np.copy(c4[start_len:start_len + loop_len])
-    to_loop_rev = to_loop[::-1]
-
-    res = np.zeros(res_len, dtype='float64')
-    res[:start_len] = start
-    is_rev = False
-    for i in range(start_len, res_len - loop_len, loop_len):
-        if is_rev:
-            to_use = to_loop_rev
-        else:
-            to_use = to_loop
-        is_rev = not is_rev
-        res[i:i+loop_len] = to_use
-
-    play_some([('C4-l', res)])
+# Loops don't quite work
 
 def max_n(xs, n):
     return xs.argsort()[-n:][::-1]
@@ -250,13 +226,14 @@ def save_notes(ns):
 
 def main():
     raw, normed = load_and_norm_notes()
+    fits = fit_polynomial_curve(normed)
     # make_play_chord(normed)
-    # plot_notes(raw, normed)
+    plot_notes(normed, fits)
     # make_loop(normed)
     # play_some(normed)
     # make_loop_by_rev(normed)
     # see_fft(normed)
     # see_freq_over_time(normed)
-    save_notes(normed)
+    # save_notes(normed)
 
 main()

@@ -7,3 +7,4 @@ pub mod sample_reader;
 pub mod soundprim;
 pub mod midisyn;
 pub mod instr;
+pub mod writer;

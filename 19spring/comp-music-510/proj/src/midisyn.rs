@@ -165,6 +165,10 @@ impl MidiSyn {
         if velo == 0 {
             return self.do_note_off(key)
         }
+        if self.sounds.contains_key(&key) {
+            // Assume that the intention is to re-press this key.
+            self.do_note_off(key);
+        }
 
         let key_wrt_c4 = (key as i32) - 60;
         let duration = 1.0;
@@ -185,11 +189,7 @@ impl MidiSyn {
             }
         };
 
-        if self.sounds.contains_key(&key) {
-            panic!("Pressing the same key again: {}", key);
-        } else {
-            self.sounds.insert(key, Box::new(ss));
-        }
+        self.sounds.insert(key, Box::new(ss));
     }
 
     fn do_note_off(&mut self, key: u8) {
@@ -205,9 +205,11 @@ impl MidiSyn {
     }
 
     fn do_prog_change(&mut self, preset: u8) {
-        let instr = if preset == 0 {
+        let instr = if preset <= 7 {
+            // Generic piano for 0-7
             Instrument::Piano
         } else {
+            println!("Unsupported ProgChange(preset={})", preset);
             Instrument::NoImpl
         };
         self.track_state.instrument = instr;

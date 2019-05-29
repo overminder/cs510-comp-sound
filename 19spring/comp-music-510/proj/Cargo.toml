@@ -1,11 +1,15 @@
+cargo-features = ["default-run"]
+
 [package]
 name = "music-syn"
 version = "0.1.0"
 authors = ["Yuxiang Jiang <yux@pdx.edu>"]
 edition = "2018"
+default-run = "main"
 
 [dependencies]
 portaudio = "*"
 hound = "*"
 itertools = "*"
 rimd = { git = "https://github.com/RustAudio/rimd.git" }
+

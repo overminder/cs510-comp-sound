@@ -53,12 +53,13 @@ impl Envelope {
 
     pub fn fast_release() -> Self {
         let mut s = Self::default();
-        s.attack = 0.0;
+        s.attack = 0.01;
+        s.attack_plier = 1.0;
         s.decay = 0.0;
         s.decay_plier = 1.0;
         s.sustain = 0.9;
         s.sustain_plier = 1.0;
-        s.release = 0.1;
+        s.release = 0.09;
         s
     }
 

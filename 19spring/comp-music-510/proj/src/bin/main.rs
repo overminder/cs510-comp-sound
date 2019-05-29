@@ -7,6 +7,7 @@ use music_syn::{
     types::*,
     midisyn::*,
     instr::*,
+    writer::*,
 };
 
 fn i16_to_f32_norm(x: i16) -> f32 {
@@ -31,8 +32,11 @@ fn debug_track(f: &rimd::SMF) {
 }
 
 fn main() -> R<()> {
-    let f = read_midi("midi/mz_545_1_format0.mid")?;
+    // let f = read_midi("midi/mz_545_1_format0.mid")?;
+    // let f = read_midi("midi/bach_846_format0.mid")?;
     // let f = read_midi("midi/mz_331_3_format0.mid")?;
+    // let f = read_midi("midi/chpn_op66_format0.mid")?;
+    let f = read_midi("midi/deb_clai_format0.mid")?;
 
     let p = Piano::load("samples/normed")?;
 
@@ -41,10 +45,11 @@ fn main() -> R<()> {
     msyn.track_state.div = f.division as usize;
     let events = &f.tracks[0].events;
     println!("Total events: {}", events.len());
-    let output = msyn.syn(&events[..1000]);
+    let output = msyn.syn(&events[..]);
     println!("Number of seconds: {}", output.len() / 44100);
-    let ss = output.to_vec();
-    play_def(ss.into_iter())?;
+    let ss: Vec<f32> = output.iter().map(|x| x * 0.1).collect();
+    // play_def(ss.into_iter())?;
+    save_wav(ss.into_iter(), "deb_clai.wav")?;
 
     Ok(())
 }

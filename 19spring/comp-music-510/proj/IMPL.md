@@ -36,6 +36,9 @@ shows some ways for looping
   + key: 60=C4 (261.63 Hz)
   + velo: pp=32 mf=80 ff=112
   + velo=0 also represents NoteOff
+  + See
+    http://www.inspiredacoustics.com/en/MIDI_note_numbers_and_center_frequencies
+    for a complete key-pitch mapping
 - Midi.NoteOff [key] [velo]
 
 ## Nomenclature

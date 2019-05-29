@@ -1,11 +1,16 @@
 use crate::types::{R, Sound};
-use crate::sample_reader::load_wav;
+use crate::sample_reader::{
+    load_wav,
+    stereo_channels_iter,
+};
 use crate::soundprim::Envelope;
 use std::collections::HashMap;
 use std::path::Path;
 
+type NoteMap = HashMap<i32, Vec<f32>>;
+
 pub struct Piano {
-    notes: HashMap<i32, Vec<f32>>,
+    notes: NoteMap,
 }
 
 
@@ -27,24 +32,52 @@ fn i16_to_f32_norm(x: i16) -> f32 {
     (x as f32 / i16::max_value() as f32) * 6.
 }
 
+fn merge_stereo(v: &[i16]) -> Vec<f32> {
+    stereo_channels_iter(&v)
+        .map(|(l, r)| (i16_to_f32_norm(l) + i16_to_f32_norm(r)) / 2.0)
+        .collect()
+}
+
+fn load_mono_mf(base_path: &str) -> R<NoteMap> {
+    let mut notes = NoteMap::new();
+
+    for key in -36..48 {
+        let path = format!("{}/{}.wav", base_path, key_to_name(key));
+        if Path::new(&path).exists() {
+            let ss = load_wav(&path)?;
+            let ss = ss.into_iter().map(i16_to_f32_norm).collect();
+            notes.insert(key, ss);
+        }
+    }
+    Ok(notes)
+}
+
+fn load_raw_mf_to_mono(base_path: &str) -> R<NoteMap> {
+    let mut notes = NoteMap::new();
+
+    for key in -36..48 {
+        let path = format!("{}/../Piano.mf.{}.wav", base_path, key_to_name(key));
+        if Path::new(&path).exists() {
+            let ss = load_wav(&path)?;
+            let ss = merge_stereo(&ss[..200000]);
+            // let ss = ss.into_iter().map(i16_to_f32_norm).collect();
+            notes.insert(key, ss);
+        }
+    }
+    Ok(notes)
+}
+
 impl Piano {
     pub fn load(base_path: &str) -> R<Self> {
-        let mut me = Piano {
-            notes: HashMap::new(),
-        };
-
-        for key in -36..48 {
-            let path = format!("{}/{}.wav", base_path, key_to_name(key));
-            if Path::new(&path).exists() {
-                let ss = load_wav(&path)?;
-                let ss = ss.into_iter().map(i16_to_f32_norm).collect();
-                me.notes.insert(key, ss);
-            }
-        }
-        Ok(me)
+        let notes = load_mono_mf(base_path)?;
+        // let notes = load_raw_mf_to_mono(base_path)?;
+        Ok(Piano {
+            notes
+        })
     }
 
     pub fn syn(&self, key: i32, amp: f64) -> impl Sound {
+        // XXX not quite performant
         let ss = self.notes[&key].to_owned();
         let dur = ss.len() as f64 / 44100.0;
 
