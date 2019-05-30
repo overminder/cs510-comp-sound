@@ -12,6 +12,8 @@ portaudio = "*"
 hound = "*"
 itertools = "*"
 rimd = { git = "https://github.com/RustAudio/rimd.git" }
+num = "*"
+claxon = "*"
 
 [profile.release]
 debug = true

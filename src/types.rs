@@ -1,6 +1,7 @@
 use std::error::Error;
 
-pub trait Sound = Iterator<Item=f32> + 'static + Send; 
+pub trait Sound = SoundRef + 'static; 
+pub trait SoundRef = Iterator<Item=f32>;
 
 pub type R<A> = Result<A, Box<Error>>;
 

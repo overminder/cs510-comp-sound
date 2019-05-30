@@ -3,3 +3,4 @@
 /target
 .*.swp
 *.svg
+.DS_Store

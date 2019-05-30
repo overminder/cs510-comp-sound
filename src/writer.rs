@@ -1,6 +1,6 @@
-use crate::types::{R, Sound};
+use crate::types::{R, SoundRef};
 
-pub fn save_wav(s: impl Sound, name: &str) -> R<()> {
+pub fn save_wav(s: impl SoundRef, name: &str) -> R<()> {
     let spec = hound::WavSpec {
         channels: 1,
         sample_rate: 44100,

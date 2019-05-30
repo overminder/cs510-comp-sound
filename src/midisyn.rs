@@ -2,6 +2,7 @@ use crate::soundprim::*;
 use crate::types::*;
 use crate::instr::*;
 
+use std::ops::{Generator, GeneratorState};
 use std::mem;
 use std::collections::HashMap;
 use rimd::{
@@ -117,6 +118,27 @@ impl MidiSyn {
         &self.output
     }
 
+    pub fn syn_gen<'a>(&'a mut self, track: &'a [TrackEvent])
+        -> impl Generator<Yield=Vec<f32>> + Unpin + 'a {
+        self.output.clear();
+        move || {
+            for te in track {
+                let mut v = vec![];
+                self.elapse_ticks(te.vtime);
+                if te.vtime != 0 {
+                    mem::swap(&mut v, &mut self.output);
+                    yield v;
+                }
+                match &te.event {
+                    Event::Midi(msg) =>
+                        self.do_midi(msg),
+                    Event::Meta(meta) =>
+                        self.do_meta(meta),
+                }
+            }
+        }
+    }
+
     fn samples_in_tick(&self, ticks: u64) -> f64 {
         let samples_per_tick = self.sample_rate
             * (self.track_state.tempo as f64 / 1_000_000.0) 
@@ -137,12 +159,14 @@ impl MidiSyn {
         // TODO: Could swap these two loops.
 
         // For each sample,
-        let mut output = vec![0.0; nsamples];
+        let start = self.output.len();
+        self.output.resize(start + nsamples, 0.0);
+        let dst = &mut self.output[start..];
+        // let mut output = vec![0.0; nsamples];
         // Advance currently ongoing sounds by nsamples.
-        elapse_map(&mut self.sounds, &mut output);
-        elapse_vec(&mut self.dampered_sounds, &mut output);
-        elapse_vec(&mut self.released_sounds, &mut output);
-        self.output.extend(output);
+        elapse_map(&mut self.sounds, dst);
+        elapse_vec(&mut self.dampered_sounds, dst);
+        elapse_vec(&mut self.released_sounds, dst);
     }
 
     fn do_midi(&mut self, msg: &MidiMessage) {

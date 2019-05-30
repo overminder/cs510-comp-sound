@@ -1,5 +1,6 @@
 use portaudio as pa;
-use crate::types::Sound;
+use crate::types::SoundRef;
+use std::mem;
 
 pub struct Settings {
     pub channels: i32,
@@ -17,12 +18,18 @@ impl Settings {
     }
 }
 
-pub fn play_def(mut sound: impl Sound) -> Result<(), pa::Error> {
+pub fn play_def(mut sound: impl SoundRef) -> Result<(), pa::Error> {
     play(&Settings::default(), sound)
 }
 
 pub fn play(settings: &Settings,
-            mut sound: impl Sound) -> Result<(), pa::Error> {
+                         mut sound: impl SoundRef) -> Result<(), pa::Error> {
+
+    // We know that the sound will not be used after this function returns,
+    // so this cast of lifetime is valid.
+    let bsound: Box<dyn SoundRef> = Box::new(sound);
+    let mut sound: Box<dyn SoundRef> = unsafe { mem::transmute(bsound) };
+
     let pa = pa::PortAudio::new()?;
 
     let mut pa_settings = pa.default_output_stream_settings(
