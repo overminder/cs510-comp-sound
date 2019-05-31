@@ -32,33 +32,48 @@ fn debug_track(f: &rimd::SMF) {
     }
 }
 
-fn gen_play(m: &mut MidiSyn, es: &[rimd::TrackEvent]) -> R<()> {
-    let ss = GenIter(m.syn_gen(es))
+fn gen_play(m0: &mut MidiSyn,
+            m1: &mut MidiSyn,
+            es: &[rimd::TrackEvent]) -> R<()> {
+    let ss0 = GenIter(m0.syn_gen(es))
         .into_iter()
-        .flat_map(|x| x.into_iter())
-        .map(|x| x * 0.2);
+        .flat_map(|x| x.into_iter());
+    let ss1 = GenIter(m1.syn_gen(es))
+        .into_iter()
+        .flat_map(|x| x.into_iter());
+
+    println!("Synthesizing...");
+    let ss = ss0.zip(ss1)
+        .flat_map(|(x, y)| vec![x, y])
+        .map(|x| x * 0.5);
     let ss: Vec<f32> = ss.collect();
-    play_def(ss.into_iter())?;
-    // save_wav(ss, "deb_clai.wav")?;
+    println!("Done, playing...");
+    let mut settings = Settings::default();
+    settings.channels = 2;
+    play(&settings, ss.into_iter())?;
+    // save_wav(ss, "deb_clai.wav", 2)?;
     Ok(())
 }
 
 fn main() -> R<()> {
     // let f = read_midi("midi/mz_545_1_format0.mid")?;
-    // let f = read_midi("midi/bach_846_format0.mid")?;
+    // let f = read_midi("midi/mz_545_3_format0.mid")?;
+    let f = read_midi("midi/bach_846_format0.mid")?;
     // let f = read_midi("midi/mz_331_3_format0.mid")?;
-    let f = read_midi("midi/chpn_op66_format0.mid")?;
+    // let f = read_midi("midi/chpn_op66_format0.mid")?;
     // let f = read_midi("midi/deb_clai_format0.mid")?;
 
-    let p = Piano::load("samples/normed")?;
+    let (p0, p1) = Piano::load("samples/normed")?;
     println!("Piano loaded.");
 
-    let mut msyn = MidiSyn::new(p);
+    let mut msyn0 = MidiSyn::new(p0);
+    let mut msyn1 = MidiSyn::new(p1);
     // XXX: sanity check >0
-    msyn.track_state.div = f.division as usize;
+    msyn0.track_state.div = f.division as usize;
+    msyn1.track_state.div = f.division as usize;
     let events = &f.tracks[0].events;
     println!("Total events: {}", events.len());
-    gen_play(&mut msyn, events)?;
+    gen_play(&mut msyn0, &mut msyn1, events)?;
 
     // let output = msyn.syn(&events[..]);
     // println!("Number of seconds: {}", output.len() / 44100);

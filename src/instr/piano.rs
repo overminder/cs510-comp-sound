@@ -12,9 +12,9 @@ use std::rc::Rc;
 type NoteMap = HashMap<i32, Rc<Vec<f32>>>;
 
 pub struct Piano {
-    notes: NoteMap,
+    // 0/1/2: pp, mf, ff
+    notes: Vec<NoteMap>,
 }
-
 
 const NOTE_NAMES: &'static [&'static str] = &[
     "C", "Db", "D", "Eb", "E", "F",
@@ -116,24 +116,70 @@ fn load_normed_flac(base_path: &str, dynamics: &str) -> R<(NoteMap, NoteMap)> {
 }
 
 impl Piano {
-    pub fn load(base_path: &str) -> R<Self> {
-        // let notes = load_mono_mf(base_path)?;
-        let (notes0, notes1) = load_normed_flac(base_path, "mf")?;
-        // let notes = load_raw_mf_to_mono(base_path)?;
-        Ok(Piano {
-            notes: notes0
-        })
+    pub fn load(base_path: &str) -> R<(Self, Self)> {
+        let (pp0, pp1) = load_normed_flac(base_path, "pp")?;
+        let (mf0, mf1) = load_normed_flac(base_path, "mf")?;
+        let (ff0, ff1) = load_normed_flac(base_path, "ff")?;
+
+        Ok((Piano { notes: vec![pp0, mf0, ff0] },
+            Piano { notes: vec![pp1, mf1, ff1] }))
     }
 
     pub fn syn(&self, key: i32, amp: f64) -> impl Sound {
-        let ss = self.notes[&key].clone();
-        let len = ss.len();
+        let dyna = if amp < 0.5 {
+            0
+        } else if amp > 0.8 {
+            2
+        } else {
+            1
+        };
+
+        let ff = self.notes[0][&key].clone();
+        let mf = self.notes[1][&key].clone();
+        let pp = self.notes[1][&key].clone();
+
+        // amp 0.4 0.7 1.0
+        // ff  1   0
+        // mf  0   1   0
+        // pp      0   1
+        let ampf = (amp as f32) * 128.0;
+        let ff_amp = if ampf < 32.0 {
+            1.0
+        } else if ampf > 80.0 {
+            0.0
+        } else {
+            1.0 - (ampf - 32.0) / 48.0
+        };
+        
+        let mf_amp = if ampf < 32.0 {
+            0.0
+        } else if ampf > 112.0 {
+            0.0
+        } else if ampf < 80.0 {
+            (ampf - 32.0) / 48.0
+        } else {
+            1.0 - (ampf - 80.0) / 32.0
+        };
+
+        let pp_amp = if ampf < 112.0 {
+            0.0
+        } else if ampf > 128.0 {
+            1.0
+        } else {
+            (ampf - 112.0) / 16.0
+        };
+
+        let len = mf.len();
         let dur = len as f64 / 44100.0;
 
         let mut env = Envelope::fast_release();
         // TODO: Mix ff, mf, pp by amp.
         env.amp = amp;
-        env.mult((0..len).map(move |ix| ss[ix]), dur)
+        env.mult((0..len).map(move |ix| {
+            ff[ix] * ff_amp +
+            mf[ix] * mf_amp +
+            pp[ix] * pp_amp
+        }), dur)
     }
 }
 

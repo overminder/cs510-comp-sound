@@ -68,18 +68,21 @@ impl Envelope {
     }
 
     pub fn make(&self, duration: f64) -> impl Sound {
+        // Amplitude goes ^ 2, but that's sometimes too much. So we ^ 1.5 instead.
+        let real_amp = self.amp * self.amp.powf(0.5);
+
         let attack = duration * self.attack;
         let decay = duration * self.decay;
         let sustain = duration * self.sustain;
         let release = duration * self.release;
-        interpolate_to(0., self.attack_plier * self.amp, attack, self.sample_rate)
-            .chain(interpolate_to(self.attack_plier * self.amp,
-                                  self.decay_plier * self.amp, decay,
+        interpolate_to(0., self.attack_plier * real_amp, attack, self.sample_rate)
+            .chain(interpolate_to(self.attack_plier * real_amp,
+                                  self.decay_plier * real_amp, decay,
                                   self.sample_rate))
-            .chain(interpolate_to(self.decay_plier * self.amp,
-                                  self.sustain_plier * self.amp, sustain,
+            .chain(interpolate_to(self.decay_plier * real_amp,
+                                  self.sustain_plier * real_amp, sustain,
                                   self.sample_rate))
-            .chain(interpolate_to(self.sustain_plier * self.amp,
+            .chain(interpolate_to(self.sustain_plier * real_amp,
                                   0., release,
                                   self.sample_rate))
     }

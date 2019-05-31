@@ -23,7 +23,8 @@ fn debug_track(f: &SMF) {
 }
 
 fn main() -> R<()> {
-    let f = SMF::from_file("midi/bach_846_format0.mid".as_ref())?;
+    // let f = SMF::from_file("midi/bach_846_format0.mid".as_ref())?;
+    let f = SMF::from_file("midi/chpn_op66_format0.mid".as_ref())?;
     debug_track(&f);
     Ok(())
 }
