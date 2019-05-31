@@ -2,7 +2,7 @@ use crate::soundprim::*;
 use crate::types::*;
 use crate::instr::*;
 
-use std::ops::{Generator, GeneratorState};
+use std::ops::Generator;
 use std::mem;
 use std::collections::HashMap;
 use rimd::{
@@ -156,8 +156,6 @@ impl MidiSyn {
         self.sample_ix = nsamples % 1.0;
         let nsamples = nsamples as usize;
 
-        // TODO: Could swap these two loops.
-
         // For each sample,
         let start = self.output.len();
         self.output.resize(start + nsamples, 0.0);
@@ -190,8 +188,8 @@ impl MidiSyn {
                 self.track_state.tempo = tempo as usize;
             }
             KeySignature => {
-                let sharp = meta.data[0] as i8;
-                let major = meta.data[1] == 0;
+                let _sharp = meta.data[0] as i8;
+                let _major = meta.data[1] == 0;
                 // TODO
             }
             EndOfTrack => {
@@ -259,7 +257,7 @@ impl MidiSyn {
         if ctrl == 64 {
             let on = option >= 64;
             if self.track_state.damper_pedal != on {
-                // Releaseing damper pedal: apply to existing sounds.
+                // Releasing damper pedal: apply to existing sounds.
                 if !on {
                     let mut ss = vec![];
                     mem::swap(&mut self.dampered_sounds, &mut ss);
@@ -272,11 +270,6 @@ impl MidiSyn {
             self.track_state.damper_pedal = on;
         }
     }
-}
-
-fn freq_wrt_c4(key: i32) -> f64 {
-    let half_step = 1.0595_f64;
-    261.63 * half_step.powi(key)
 }
 
 pub struct TrackState {

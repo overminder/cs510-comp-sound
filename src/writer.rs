@@ -8,12 +8,13 @@ pub fn save_wav(s: impl SoundRef, name: &str, channels: u16) -> R<()> {
         sample_format: hound::SampleFormat::Int,
     };
 
+    // Scale f32 to int24
     // Smaller to avoid capping.
-    let amplitude = 30000.0 * 256.0;
+    let plier = 30000.0 * 256.0;
 
     let mut writer = hound::WavWriter::create(name, spec)?;
     for v in s {
-        writer.write_sample((v * amplitude) as i32)?;
+        writer.write_sample((v * plier) as i32)?;
         // writer.write_sample(v)?;
     }
     Ok(())

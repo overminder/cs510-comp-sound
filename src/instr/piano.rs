@@ -1,10 +1,5 @@
 use crate::types::{R, Sound};
-use crate::sample_reader::{
-    load_wav,
-    stereo_channels_iter,
-};
 use crate::soundprim::Envelope;
-use itertools::Itertools;
 use std::collections::HashMap;
 use std::path::Path;
 use std::rc::Rc;
@@ -30,48 +25,9 @@ fn key_to_name(k: i32) -> String {
     format!("{}{}", name, nth_octave)
 }
 
-fn i16_to_f32_norm(x: i16) -> f32 {
-    (x as f32 / i16::max_value() as f32) * 6.
-}
-
 fn pcm24_to_f32_norm(x: i32) -> f32 {
     let mult = (i32::max_value() >> 8) as f32;
     x as f32 / mult
-}
-
-fn merge_stereo(v: &[i16]) -> Vec<f32> {
-    stereo_channels_iter(&v)
-        .map(|(l, r)| (i16_to_f32_norm(l) + i16_to_f32_norm(r)) / 2.0)
-        .collect()
-}
-
-fn load_mono_mf(base_path: &str) -> R<NoteMap> {
-    let mut notes = NoteMap::new();
-
-    for key in -36..48 {
-        let path = format!("{}/{}.wav", base_path, key_to_name(key));
-        if Path::new(&path).exists() {
-            let ss = load_wav(&path)?;
-            let ss = ss.into_iter().map(i16_to_f32_norm).collect();
-            notes.insert(key, Rc::new(ss));
-        }
-    }
-    Ok(notes)
-}
-
-fn load_raw_mf_to_mono(base_path: &str) -> R<NoteMap> {
-    let mut notes = NoteMap::new();
-
-    for key in -36..48 {
-        let path = format!("{}/../Piano.mf.{}.wav", base_path, key_to_name(key));
-        if Path::new(&path).exists() {
-            let ss = load_wav(&path)?;
-            let ss = merge_stereo(&ss[..200000]);
-            // let ss = ss.into_iter().map(i16_to_f32_norm).collect();
-            notes.insert(key, Rc::new(ss));
-        }
-    }
-    Ok(notes)
 }
 
 fn load_normed_flac(base_path: &str, dynamics: &str) -> R<(NoteMap, NoteMap)> {
@@ -126,59 +82,55 @@ impl Piano {
     }
 
     pub fn syn(&self, key: i32, amp: f64) -> impl Sound {
-        let dyna = if amp < 0.5 {
-            0
-        } else if amp > 0.8 {
-            2
-        } else {
-            1
-        };
-
-        let ff = self.notes[0][&key].clone();
-        let mf = self.notes[1][&key].clone();
-        let pp = self.notes[1][&key].clone();
-
-        // amp 0.4 0.7 1.0
+        // amp 32 80 112
         // ff  1   0
         // mf  0   1   0
         // pp      0   1
-        let ampf = (amp as f32) * 128.0;
-        let ff_amp = if ampf < 32.0 {
+        // Between: interpolate both samples 
+        let pp_max = 32.0;
+        let mf_max = 80.0;
+        let ff_max = 112.0;
+        let amp_max = 128.0;
+
+        let pp = self.notes[0][&key].clone();
+        let mf = self.notes[1][&key].clone();
+        let ff = self.notes[2][&key].clone();
+
+        let ampf = (amp as f32) * amp_max;
+        let pp_amp = if ampf < pp_max {
             1.0
-        } else if ampf > 80.0 {
+        } else if ampf > mf_max {
             0.0
         } else {
-            1.0 - (ampf - 32.0) / 48.0
+            1.0 - (ampf - pp_max) / (mf_max - pp_max)
         };
         
-        let mf_amp = if ampf < 32.0 {
+        let mf_amp = if ampf < pp_max {
             0.0
-        } else if ampf > 112.0 {
+        } else if ampf > ff_max {
             0.0
-        } else if ampf < 80.0 {
-            (ampf - 32.0) / 48.0
+        } else if ampf < mf_max {
+            (ampf - pp_max) / (mf_max - pp_max)
         } else {
-            1.0 - (ampf - 80.0) / 32.0
+            1.0 - (ampf - mf_max) / pp_max
         };
 
-        let pp_amp = if ampf < 112.0 {
+        let ff_amp = if ampf < ff_max {
             0.0
-        } else if ampf > 128.0 {
+        } else if ampf > amp_max {
             1.0
         } else {
-            (ampf - 112.0) / 16.0
+            (ampf - ff_max) / (amp_max - ff_max)
         };
 
         let len = mf.len();
         let dur = len as f64 / 44100.0;
 
         let mut env = Envelope::fast_release();
-        // TODO: Mix ff, mf, pp by amp.
         env.amp = amp;
         env.mult((0..len).map(move |ix| {
-            ff[ix] * ff_amp +
-            mf[ix] * mf_amp +
-            pp[ix] * pp_amp
+            ff[ix] * ff_amp + mf[ix] * mf_amp + pp[ix] * pp_amp
+            // ff[ix]
         }), dur)
     }
 }

@@ -18,12 +18,12 @@ impl Settings {
     }
 }
 
-pub fn play_def(mut sound: impl SoundRef) -> Result<(), pa::Error> {
+pub fn play_def(sound: impl SoundRef) -> Result<(), pa::Error> {
     play(&Settings::default(), sound)
 }
 
 pub fn play(settings: &Settings,
-            mut sound: impl SoundRef) -> Result<(), pa::Error> {
+            sound: impl SoundRef) -> Result<(), pa::Error> {
 
     // We know that the sound will not be used after this function returns,
     // so this cast of lifetime is valid.

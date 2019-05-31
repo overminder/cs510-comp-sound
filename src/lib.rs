@@ -1,7 +1,6 @@
 #![feature(trait_alias)]
 #![feature(test)]
 #![feature(generators, generator_trait)]
-#![allow(warnings)]
 
 pub mod playback;
 pub mod types;

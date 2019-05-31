@@ -68,8 +68,7 @@ impl Envelope {
     }
 
     pub fn make(&self, duration: f64) -> impl Sound {
-        // Amplitude goes ^ 2, but that's sometimes too much. So we ^ 1.5 instead.
-        let real_amp = self.amp * self.amp.powf(0.5);
+        let real_amp = self.amp;
 
         let attack = duration * self.attack;
         let decay = duration * self.decay;

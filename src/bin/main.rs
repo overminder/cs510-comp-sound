@@ -46,19 +46,19 @@ fn gen_play(m0: &mut MidiSyn,
     let ss = ss0.zip(ss1)
         .flat_map(|(x, y)| vec![x, y])
         .map(|x| x * 0.5);
-    let ss: Vec<f32> = ss.collect();
+    // let ss: Vec<f32> = ss.collect();
     println!("Done, playing...");
     let mut settings = Settings::default();
     settings.channels = 2;
-    play(&settings, ss.into_iter())?;
-    // save_wav(ss, "deb_clai.wav", 2)?;
+    // play(&settings, ss.into_iter())?;
+    save_wav(ss, "mz_545.wav", 2)?;
     Ok(())
 }
 
 fn main() -> R<()> {
-    // let f = read_midi("midi/mz_545_1_format0.mid")?;
+    let f = read_midi("midi/mz_545_1_format0.mid")?;
     // let f = read_midi("midi/mz_545_3_format0.mid")?;
-    let f = read_midi("midi/bach_846_format0.mid")?;
+    // let f = read_midi("midi/bach_846_format0.mid")?;
     // let f = read_midi("midi/mz_331_3_format0.mid")?;
     // let f = read_midi("midi/chpn_op66_format0.mid")?;
     // let f = read_midi("midi/deb_clai_format0.mid")?;
