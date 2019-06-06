@@ -53,7 +53,7 @@ impl Piano {
     }
 
     pub fn syn(&self, key: i32, amp: f64) -> impl Sound {
-        self.syn_by_nomix(key, amp)
+        self.syn_by_mix(key, amp)
     }
 
     #[allow(unused)]
