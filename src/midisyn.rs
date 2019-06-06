@@ -227,7 +227,7 @@ impl MidiSyn {
             }
         };
 
-        self.sounds.insert(key, Box::new(ss));
+        self.sounds.insert(key, ss);
     }
 
     fn do_note_off(&mut self, key: u8) {

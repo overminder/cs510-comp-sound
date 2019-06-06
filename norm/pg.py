@@ -29,15 +29,22 @@ def load_and_norm_notes(note_names, dyn='mf', nsamples=300000):
     # raw = {name: (data[:,0] + data[:,1]) / 2 for (name, data) in raw.items()}
 
     # Normalize volume and align attacks 
-    normed = norm_attack(norm_max(raw, 0.5),
+    max_normed = norm_max(raw, 0.5)
+    normed = norm_attack(max_normed,
             # pp contains quite some noise, so threshold needs to be larger (40%)
             thres=None if dyn != 'pp' else 0.2)
 
     # Crop the result
     if nsamples is not None:
+        raw = {name: data[:nsamples] for (name, data) in raw.items()}
+        max_normed = {name: data[:nsamples] for (name, data) in max_normed.items()}
         normed = {name: data[:nsamples] for (name, data) in normed.items()}
 
-    return raw, normed
+    return {
+        'original': raw,
+        'scaled': max_normed,
+        'shifted': normed,
+    }
 
 def save_notes(notes, dyn):
     for name, ss in notes.items(): 
@@ -166,18 +173,17 @@ def make_play_chord(notes, chords):
         to_play.append((''.join(chs), wave))
     play_some(to_play)
 
-# Something wrong with pp.A3
-def plot_notes(raw, normed):
-    plt.subplot(2, 1, 1)
-    for name, ss in raw.items():
-        plt.plot(amplitude(ss), label=name)
-    plt.legend()
+def plot_notes(sss):
+    n = len(sss)
+    for i, (nname, notes) in enumerate(sss.items()):
+        plt.subplot(n, 1, i + 1)
+        plt.title(nname)
+        for name, ss in notes.items():
+            plt.plot(amplitude(ss[:100000], merge2=True), label=name)
+        plt.legend()
 
-    plt.subplot(2, 1, 2)
-    for name, ss in normed.items():
-        plt.plot(amplitude(ss), label=name)
-    plt.legend()
-
+    plt.tight_layout()
+    plt.savefig('out.pdf', bbox_inches='tight')
     plt.show()
 
 def try_flac(name='C4'):
@@ -190,25 +196,21 @@ def try_flac(name='C4'):
 
     sf.write('foo.flac', data, rate, subtype='PCM_24')
 
-def main():
-    # raw, normed = load_and_norm_notes(make_note_names('CDEFGAB', '1234567'))
-    # raw, normed = load_and_norm_notes(make_note_names('CDEFGAB', '1234567'), dyn)
+def make_chord(smap):
+    ks = list(smap.keys())
+    while ks:
+        r = ks[:7]
+        ks = ks[7:]
+        yield r
 
-    def make_chord(smap):
-        ks = list(smap.keys())
-        while ks:
-            r = ks[:7]
-            ks = ks[7:]
-            yield r
-
+def normalize_all():
     for dyn in ['pp', 'mf', 'ff']:
-        raw, normed = load_and_norm_notes(make_note_names('CDEFGAB',
+        ss = load_and_norm_notes(make_note_names('CDEFGAB',
             '1234567', b=True), dyn)
-        # make_play_chord(normed, make_chord(normed))
-        save_notes(normed, dyn)
+        save_notes(ss['shifted'], dyn)
 
-        # plt.plot([np.max(amplitude(ss)) for ss in normed.values()], label=dyn)
-    # plt.legend()
-    # plt.show()
+def main():
+    ss = load_and_norm_notes(make_note_names('CDEF', '4'))
+    plot_notes(ss)
 
 main()

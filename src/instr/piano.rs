@@ -1,5 +1,6 @@
 use crate::types::{R, Sound};
 use crate::soundprim::Envelope;
+use crate::sample_reader::load_flac;
 use std::collections::HashMap;
 use std::path::Path;
 use std::rc::Rc;
@@ -25,11 +26,6 @@ fn key_to_name(k: i32) -> String {
     format!("{}{}", name, nth_octave)
 }
 
-fn pcm24_to_f32_norm(x: i32) -> f32 {
-    let mult = (i32::max_value() >> 8) as f32;
-    x as f32 / mult
-}
-
 fn load_normed_flac(base_path: &str, dynamics: &str) -> R<(NoteMap, NoteMap)> {
     let mut notes0 = NoteMap::new();
     let mut notes1 = NoteMap::new();
@@ -38,32 +34,7 @@ fn load_normed_flac(base_path: &str, dynamics: &str) -> R<(NoteMap, NoteMap)> {
         let path = format!("{}/{}.{}.flac",
                            base_path, key_to_name(key), dynamics);
         if Path::new(&path).exists() {
-            let mut r = claxon::FlacReader::open(path)?;
-            let max_block_len = r.streaminfo().max_block_size as usize * 2;
-            let num_samples = r.streaminfo().samples.unwrap() as usize;
-            let mut ch0 = Vec::with_capacity(num_samples);
-            let mut ch1 = Vec::with_capacity(num_samples);
-            let mut buf = Vec::with_capacity(max_block_len);
-            let mut blocks = r.blocks();
-
-            loop {
-                match blocks.read_next_or_eof(buf) {
-                    Ok(Some(block)) => {
-                        ch0.extend(block.channel(0)
-                                   .iter()
-                                   .cloned()
-                                   .map(pcm24_to_f32_norm));
-                        ch1.extend(block.channel(1)
-                                   .iter()
-                                   .cloned()
-                                   .map(pcm24_to_f32_norm));
-                        buf = block.into_buffer();
-                    },
-                    Ok(None) => break, // End of file.
-                    Err(_) => panic!("failed to decode")
-                }
-            }
-            // println!("Load {} -> {} samples", &key_to_name(key), num_samples);
+            let (ch0, ch1) = load_flac(&path)?;
             notes0.insert(key, Rc::new(ch0));
             notes1.insert(key, Rc::new(ch1));
         }
@@ -82,6 +53,34 @@ impl Piano {
     }
 
     pub fn syn(&self, key: i32, amp: f64) -> impl Sound {
+        self.syn_by_nomix(key, amp)
+    }
+
+    #[allow(unused)]
+    fn syn_by_nomix(&self, key: i32, amp: f64) -> impl Sound {
+        let pp_max = 32.0 / 128.0;
+        let mf_max = 80.0 / 128.0;
+        let ff_max = 112.0 / 128.0;
+        let dyn_ix = if amp < (mf_max + pp_max) / 2.0 {
+            0
+        } else if amp > (mf_max + ff_max) / 2.0 {
+            2
+        } else {
+            1
+        };
+
+        let ss = self.notes[dyn_ix][&key].clone();
+
+        let len = ss.len();
+        let dur = len as f64 / 44100.0;
+
+        let mut env = Envelope::fast_release();
+        env.amp = amp;
+        env.mult((0..len).map(move |ix| ss[ix]), dur)
+    }
+
+    #[allow(unused)]
+    fn syn_by_mix(&self, key: i32, amp: f64) -> impl Sound {
         // amp 32 80 112
         // ff  1   0
         // mf  0   1   0
