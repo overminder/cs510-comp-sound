@@ -70,8 +70,8 @@ with a window size of 441 samples. The x axis represents the time (n-th
 sample). The subfigure
 titled `original` represents the files that are just downloaded. As can be seen
 from the figure, the amplitude and the timing of the notes are very
-different -- the attacks of different notes can be ~8000 samples apart
-(which translates to a significant 0.2 second delay), and the amplitude
+different -- the attacks of different notes can be around 8000 samples apart
+(which translates to a significant 0.2 seconds delay), and the amplitude
 ratio between two samples can be as large as $200\%$. 
 We synthesized some chords using the original samples and they sound horrible
 -- it feels that the keys are not played at the same time.
@@ -83,9 +83,12 @@ and subfigure `shifted` represents the result of aligning the start of
 the attacks. This turned out to be very effective -- synthesized chords
 sounds like real chords now.
 
+We save the normalized samples as FLAC files to keep them loseless. 
+
 \begin{figure}[ht]
   \centering
   \includegraphics[page=1,width=\textwidth]{../norm/out.pdf}
+  \caption{Amplitude Comparison}
 \end{figure}
 
 \section{Architecture of the Synthesizer}
@@ -119,6 +122,53 @@ feature, which allows us to write our synthesizer as a push-based stream.
 The Rust compiler transforms the coroutine code into regular state machines
 so that the coroutine code is platform independent.
 
+\section{Evaluation}
+
+We evaluated our synthesizer on our 2017 13-inch Macbook Pro with
+7360U and builtin stereo speakers. We downloaded various
+(Chopin, Mozart, Debussy, and Bach) piano MIDI files
+from \href{http://www.piano-midi.de/}{piano-midi.de}, and compared our
+synthesizer with MacOS's GarageBand's MIDI synthesizer.
+
+\subsection{Feature Completeness}
+
+Our synthesizer supports just enough MIDI event kinds to be able to play
+the downloaded MIDI files.
+
+\subsection{Sound Quality}
+
+It's noticeable that our synthesizer produces lower-quality sounds. This
+is partly due to the noise from the samples that we use. Our synthesizer
+also sounds blurry while GarageBand sounds crispier. This is possibly
+because that we handle different note dynamics by linearly mixing pp,
+mf, and ff samples.
+
+On the other hand, due to extensive use of envelopes in our synthesizer,
+we at least are able to avoid most of the crackling sounds.
+
+\subsection{Performance}
+
+Our synthesizer takes around 6 seconds to synthesize Debussy's Clair De Lune.
+And there's not much that we can do about that --
+70\% of the time were spent in loading the piano samples, 10\% in synthesis,
+and 20\% in writing to the output file.
+
+Originally there was a bottleneck in the our synthesis engine\\
+(\texttt{MidiSyn::\{syn,elapse\_notes\}} and \texttt{HashMap::insert})
+and we fixed it by batch elapsing notes:
+
+\begin{figure}[ht]
+  \centering
+  \includegraphics[page=1,width=\textwidth]{../perf/slow.png}
+  \caption{Before Optimization}
+\end{figure}
+
+\begin{figure}[ht]
+  \centering
+  \includegraphics[page=1,width=\textwidth]{../perf/opt.png}
+  \caption{After Optimization}
+\end{figure}
+
 \section{Limitations and Future Work}
 
 Our synthesizer is certainly very incomplete feature wise.
@@ -131,7 +181,16 @@ Our synthesizer is certainly very incomplete feature wise.
     are always finite. This requires us to extract the sustained part from
     the samples and loop them.
 
-  \item [Optimization] Currently we use a push-based approach for streaming
+  \item [Start-up Performance] At the start-up time, the synthesizer needs
+    to load all 254 sample files (each around 1M in size) into the memory. This
+    takes around 4 seconds on my 7360U laptop, which is a noticable delay. We can't
+    think of a way to optimize this -- the Rust FLAC library we use is already
+    as performant as libflac (which decodes faster than any other audio
+    formats except for uncompressed PCM wav). Maybe we should collapse all
+    the files into a whole to minimize syscalls? However syscalls don't
+    seem to cost too much here...
+    
+  \item [Pull-Based Streaming] Currently we use a push-based approach for streaming
     synthesis. This works well in most of the cases, balancing the throughput
     and the latency. However, in the extremely case, one MIDI event could cause
     potentially huge number of samples to be synthesized, which causes lags.
@@ -159,13 +218,24 @@ Our synthesizer is certainly very incomplete feature wise.
 
 \subsection{Running the Synthesizer}
 
-The synthesizer requires portaudio and Rust nightly. Run
-$$
+The synthesizer requires portaudio and Rust nightly. Inside the
+project root (e.g. the folder where Cargo.toml resides), run
 \texttt{cargo run --release -- \$MIDI\_IN}
-$$
-
-$$
+to play the given midi file, or
 \texttt{cargo run --release -- \$MIDI\_IN \$WAV\_OUT}
-$$
+to save the output to a file.
+
+\subsection{Sample MIDI files}
+
+\texttt{midi/} contains some sample MIDI files that's downloaded from 
+\href{http://www.piano-midi.de/}{piano-midi.de}. See \texttt{midi/LICENSE}
+for their license.
+
+\subsection{Piano Samples}
+
+We have already included the normalized piano sample files in the git repo
+so you don't have to download and process them by yourself. But if you would
+like to do that, please see \texttt{samples/} and \texttt{norm/pg.py} for
+more details.
 
 \end{document}
