@@ -1,5 +1,4 @@
 #![feature(trait_alias)]
-#![feature(test)]
 #![feature(generators, generator_trait)]
 
 pub mod playback;

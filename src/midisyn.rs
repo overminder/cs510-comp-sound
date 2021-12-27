@@ -14,8 +14,8 @@ use rimd::{
     MetaCommand,
 };
 
-type NoteMap = HashMap<u8, Box<Sound>>;
-type NoteVec = Vec<Box<Sound>>;
+type NoteMap = HashMap<u8, Box<dyn Sound>>;
+type NoteVec = Vec<Box<dyn Sound>>;
 
 pub struct MidiSyn {
     pub sample_rate: f64,
@@ -212,7 +212,7 @@ impl MidiSyn {
         let duration = 1.0;
         let amp = (velo as f64) / 128.0;
 
-        let ss: Box<Sound> = match self.track_state.instrument {
+        let ss: Box<dyn Sound> = match self.track_state.instrument {
             Instrument::Piano => {
                 Box::new(self.piano.syn(key_wrt_c4, amp))
             }
